@@ -3,32 +3,28 @@
 # should be Node1, Node2 and Node3 as shown below(for service names they will be lowercase). You can add additional
 # parameters and configurations as required by your implementation.
 
-
 version: "3.7"
 services:
-   node1:
-     container_name: Node1
-     build: Node/.
+  node1:
+    container_name: Node1
+    build: Node/.
+    environment:
+      NODE_NAME: "Node1"
 
-   node2:
-     container_name: Node2
-     build: Node/.
+  node2:
+    container_name: Node2
+    build: Node/.
+    environment:
+      NODE_NAME: "Node2"
 
-   node3:
-       container_name: Node3
-       build: Node/.
+  node3:
+    container_name: Node3
+    build: Node/.
+    environment:
+      NODE_NAME: "Node3"
 
-   #Do not change the part below
-   controller:
-       container_name: Controller
-       build: Controller/.
-       stdin_open: true
-
-
-
-
-
-
-
-
-
+  #Do not change the part below
+  # controller:
+  #   container_name: Controller
+  #   build: Controller/.
+  #   stdin_open: true

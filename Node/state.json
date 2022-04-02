@@ -1,0 +1,29 @@
+{
+    "Node1": {
+        "id": 1,
+        "currentTerm": 0,
+        "votedFor": null,
+        "log": [],
+        "timeout": 297,
+        "heartbeat": 100,
+        "state": "FOLLOWER"
+    },
+    "Node2": {
+        "id": 2,
+        "currentTerm": 0,
+        "votedFor": null,
+        "log": [],
+        "timeout": 350,
+        "heartbeat": 100,
+        "state": "FOLLOWER"
+    },
+    "Node3": {
+        "id": 3,
+        "currentTerm": 0,
+        "votedFor": null,
+        "log": [],
+        "timeout": 400,
+        "heartbeat": 100,
+        "state": "FOLLOWER"
+    }
+}
