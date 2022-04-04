@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     self_node = os.getenv('NODE_NAME')
     sender = self_node
-    nodes = ["Node1", "Node2", "Node3"]
+    nodes = ["Node1", "Node2", "Node3", "Node4", "Node5"]
     targets = nodes
     targets.remove(self_node)
     node = RaftNode()
