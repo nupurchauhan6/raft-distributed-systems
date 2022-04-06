@@ -16,7 +16,7 @@ port = 5555
 
 # Request
 msg['sender_name'] = sender
-msg['request'] = "CONVERT_FOLLOWER"
+msg['request'] = "SHUTDOWN"
 print(f"Request Created : {msg}")
 
 # Socket Creation and Binding
