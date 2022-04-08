@@ -23,17 +23,17 @@ services:
     environment:
       NODE_NAME: "Node3"
 
-  # node4:
-  #   container_name: Node4
-  #   build: Node/.
-  #   environment:
-  #     NODE_NAME: "Node4"
+  node4:
+    container_name: Node4
+    build: Node/.
+    environment:
+      NODE_NAME: "Node4"
 
-  # node5:
-  #   container_name: Node5
-  #   build: Node/.
-  #   environment:
-  #     NODE_NAME: "Node5"
+  node5:
+    container_name: Node5
+    build: Node/.
+    environment:
+      NODE_NAME: "Node5"
       
   #Do not change the part below
   controller:

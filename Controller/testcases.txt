@@ -1,7 +1,0 @@
-leader_info  = PASS
-convert_all_to_follower = PASS
-convert_leader_to_follower = PASS
-shutdown_node = PASS
-shutdown_leader = PASS
-timeout_node = PASS
-timeout_leader = PASS

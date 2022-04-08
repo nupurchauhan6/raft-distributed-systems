@@ -95,7 +95,7 @@ def request(skt, name, nodes):
 if __name__ == "__main__":
     time.sleep(5)
     sender = "Controller"
-    nodes = ["Node1", "Node2", "Node3"]
+    nodes = ["Node1", "Node2", "Node3","Node4", "Node5" ]
 
     skt = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     skt.bind((sender, port))
@@ -114,9 +114,11 @@ if __name__ == "__main__":
         8: timeout_leader,
     }
 
-    # while run_test_case:
-    #     select_test_case = random.randint(1, 7)
-    #     testCases[select_test_case](skt, nodes)
-    #     time.sleep(5)
+    # Run combination of different cases
+    while run_test_case:
+        select_test_case = random.randint(1, 8)
+        testCases[select_test_case](skt, nodes)
+        time.sleep(5)
 
-    testCases[8](skt, nodes)
+    # Run any single case
+    # testCases[8](skt, nodes)
