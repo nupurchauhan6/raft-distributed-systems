@@ -44,33 +44,6 @@ def convert_leader_to_follower(skt, nodes):
     request(skt, 'CONVERT_FOLLOWER', [leader])
 
 
-def convert_leader_to_follower(skt, nodes):
-    leader_info(skt, nodes)
-    global is_leader_set
-    while(not is_leader_set):
-        continue
-    is_leader_set = False
-    request(skt, 'CONVERT_FOLLOWER', [leader])
-
-
-def convert_follower_to_follower(skt, nodes):
-    convert_follower = random.choice(nodes)
-    request(skt, 'CONVERT_FOLLOWER', [convert_follower])
-    time.sleep(5)
-    request(skt, 'CONVERT_FOLLOWER', [convert_follower])
-
-
-def convert_leader_to_leader(skt, nodes):
-    leader_info(skt, nodes)
-    global is_leader_set
-    while(not is_leader_set):
-        continue
-    is_leader_set = False
-    request(skt, 'CONVERT_FOLLOWER', [leader])
-    time.sleep(5)
-    request(skt, 'CONVERT_FOLLOWER', [leader])
-
-
 def leader_info(skt, nodes):
     request(skt, 'LEADER_INFO', nodes)
 
@@ -95,12 +68,16 @@ def timeout_leader(skt, nodes):
     request(skt, 'TIMEOUT', [timeout_node])
 
 
-def shutdown_node_convert_to_follower(skt, nodes):
+def convert_shutdown_node_to_follower(skt, nodes):
     shutdown_node = random.choice(nodes)
     request(skt, 'SHUTDOWN', [shutdown_node])
     time.sleep(5)
     request(skt, 'CONVERT_FOLLOWER', [shutdown_node])
 
+def convert_shutdown_leader_node_to_follower(skt, nodes):
+    shutdown_leader(skt, nodes)
+    time.sleep(5)
+    request(skt, 'CONVERT_FOLLOWER', [leader])
 
 def request(skt, name, nodes):
     msg = json.load(open("Message.json"))
@@ -132,8 +109,9 @@ if __name__ == "__main__":
         3: convert_leader_to_follower,
         4: shutdown_node,
         5: shutdown_leader,
-        6: timeout_node,
-        7: timeout_leader,
+        6: convert_shutdown_node_to_follower,
+        7: timeout_node,
+        8: timeout_leader,
     }
 
     # while run_test_case:
@@ -141,4 +119,4 @@ if __name__ == "__main__":
     #     testCases[select_test_case](skt, nodes)
     #     time.sleep(5)
 
-    testCases[3](skt, nodes)
+    testCases[8](skt, nodes)

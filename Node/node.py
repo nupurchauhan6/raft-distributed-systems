@@ -21,8 +21,12 @@ def create_msg(sender, request, currentTerm, key="", value=""):
 
 
 def vote_request(skt, node: RaftNode, self_node, target, term):
-    if node.currentTerm < term and node.votedFor == None:
-        node.currentTerm += 1
+    if node.currentTerm < term:
+        node.currentTerm = term
+        node.state = FOLLOWER
+        node.votedFor = None
+
+    if node.votedFor == None:
         node.startTime = time.perf_counter()
         node.electionTimeout = node.getElectionTimeout()
         node.votedFor = target
@@ -46,7 +50,6 @@ def append_rpc(node: RaftNode, term, leader):
     if node.state == CANDIDATE and term >= node.currentTerm:
         node.currentTerm = term
         node.state = FOLLOWER
-        
 
 
 def convert_follower(node: RaftNode):
@@ -75,9 +78,9 @@ def listener(skt, node: RaftNode, nodes, self_node):
         msg, addr = skt.recvfrom(1024)
         decoded_msg = json.loads(msg.decode('utf-8'))
 
-        if not node.shutdown:
+        if not node.shutdown or decoded_msg['request'] == CONVERT_FOLLOWER:
             print(f"Message Received : {decoded_msg} From : {addr}")
-            
+
             if decoded_msg['request'] == VOTE_REQUEST:
                 vote_request(
                     skt, node, self_node, decoded_msg['sender_name'], decoded_msg['term'])
@@ -104,7 +107,6 @@ def listener(skt, node: RaftNode, nodes, self_node):
 
 def messenger(skt, node: RaftNode, sender, target):
     while(True):
-
         if not node.shutdown:
             if node.state == LEADER:
                 if (node.startTime + node.heartbeatTimeout) < time.perf_counter():
