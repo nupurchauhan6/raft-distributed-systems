@@ -8,89 +8,127 @@ from raft import RaftNode
 from constants import *
 
 
-def create_msg(sender, request, currentTerm):
+def create_msg(sender, request, currentTerm, key="", value=""):
     msg = {
         "sender_name": sender,
         "request": request,
         "term": currentTerm,
-        "key": "",
-        "value": ""
+        "key": key,
+        "value": value
     }
     msg_bytes = json.dumps(msg).encode()
     return msg_bytes
 
 
-def vote_request(node: RaftNode, sender, term):
+def vote_request(skt, node: RaftNode, self_node, target, term):
     if node.currentTerm < term and node.votedFor == None:
         node.currentTerm += 1
         node.startTime = time.perf_counter()
         node.electionTimeout = node.getElectionTimeout()
-        node.votedFor = sender
-        msg_bytes = create_msg(sender, VOTE_ACK, node.currentTerm)
-        UDP_Socket.sendto(msg_bytes, (sender, 5555))
+        node.votedFor = target
+        msg_bytes = create_msg(self_node, VOTE_ACK, node.currentTerm)
+        skt.sendto(msg_bytes, (target, 5555))
 
 
-def vote_ack(node: RaftNode, nodes):
+def vote_ack(node: RaftNode, nodes, self_node):
     node.voteCount += 1
-    if node.voteCount > math.ceil((len(nodes)+1)/2.0):
+    if node.voteCount >= math.ceil((len(nodes)+1)/2.0):
         node.electionTimeout = node.getHeartbeatTimeout()
         node.startTime = time.perf_counter()
         node.state = LEADER
+        node.currentLeader = self_node
 
 
-def append_rpc(node: RaftNode, term):
+def append_rpc(node: RaftNode, term, leader):
     node.electionTimeout = node.getElectionTimeout()
     node.startTime = time.perf_counter()
+    node.currentLeader = leader
     if node.state == CANDIDATE and term >= node.currentTerm:
         node.currentTerm = term
         node.state = FOLLOWER
+        
 
 
 def convert_follower(node: RaftNode):
     node.state = FOLLOWER
+    node.votedFor = None
+    node.voteCount = 0
     node.startTime = time.perf_counter()
     node.electionTimeout = node.getElectionTimeout()
+    print("Leader Converted to Follower........................")
 
 
 def timeout(node: RaftNode):
+    node.state = 'FOLLOWER'
     node.startTime = time.perf_counter()
     node.electionTimeout = 0
 
 
-def shutdown():
-    return
+def leader_info(skt, node: RaftNode, self_node):
+    print("from node->", node.currentLeader)
+    msg_bytes = create_msg(
+        self_node, LEADER_INFO, node.currentTerm, "LEADER", node.currentLeader)
+    skt.sendto(msg_bytes, ('Controller', 5555))
 
 
-def leader_info(node: RaftNode):
-    return
-
-
-def listener(skt, node: RaftNode, nodes):
+def listener(skt, node: RaftNode, nodes, self_node):
     while True:
         msg, addr = skt.recvfrom(1024)
         decoded_msg = json.loads(msg.decode('utf-8'))
-        print(f"Message Received : {decoded_msg} From : {addr}")
 
-        if decoded_msg['request'] == VOTE_REQUEST:
-            vote_request(node, decoded_msg['sender_name'], decoded_msg['term'])
+        if not node.shutdown:
+            print(f"Message Received : {decoded_msg} From : {addr}")
+            
+            if decoded_msg['request'] == VOTE_REQUEST:
+                vote_request(
+                    skt, node, self_node, decoded_msg['sender_name'], decoded_msg['term'])
 
-        elif decoded_msg['request'] == VOTE_ACK:
-            vote_ack(node, nodes)
+            elif decoded_msg['request'] == VOTE_ACK:
+                vote_ack(node, nodes, self_node)
 
-        elif decoded_msg['request'] == APPEND_RPC:
-            append_rpc(node, decoded_msg['term'])
+            elif decoded_msg['request'] == APPEND_RPC:
+                append_rpc(node, decoded_msg['term'],
+                           decoded_msg['sender_name'])
 
-        elif decoded_msg['request'] == CONVERT_FOLLOWER:
-            convert_follower(node)
+            elif decoded_msg['request'] == CONVERT_FOLLOWER:
+                convert_follower(node)
 
-        elif decoded_msg['request'] == TIMEOUT:
-            timeout(node)
+            elif decoded_msg['request'] == TIMEOUT:
+                timeout(node)
 
-        elif decoded_msg['request'] == SHUTDOWN:
-            return shutdown(node)
+            elif decoded_msg['request'] == SHUTDOWN:
+                node.shutdown = True
 
-        elif decoded_msg['request'] == LEADER_INFO:
-            leader_info(node)
+            elif decoded_msg['request'] == LEADER_INFO:
+                leader_info(skt, node, self_node)
+
+
+def messenger(skt, node: RaftNode, sender, target):
+    while(True):
+
+        if not node.shutdown:
+            if node.state == LEADER:
+                if (node.startTime + node.electionTimeout) < time.perf_counter():
+                    node.electionTimeout = node.getHeartbeatTimeout()
+                    node.startTime = time.perf_counter()
+                    for target in targets:
+                        msg_bytes = create_msg(
+                            sender, APPEND_RPC, node.currentTerm)
+                        skt.sendto(msg_bytes, (target, 5555))
+
+            if node.state == FOLLOWER:
+                if (node.startTime + node.electionTimeout) < time.perf_counter():
+                    print("Starting Election")
+                    node.state = CANDIDATE
+                    node.currentTerm += 1
+                    node.votedFor = self_node
+                    node.voteCount = 1
+
+                    for target in targets:
+                        msg_bytes = create_msg(
+                            sender, VOTE_REQUEST, node.currentTerm)
+                        skt.sendto(msg_bytes, (target, 5555))
+                node.votedFor = None
 
 
 if __name__ == "__main__":
@@ -105,28 +143,8 @@ if __name__ == "__main__":
     UDP_Socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     UDP_Socket.bind((sender, 5555))
 
-    thread = threading.Thread(target=listener, args=[UDP_Socket, node, nodes])
-    thread.start()
+    threading.Thread(target=listener, args=[
+                     UDP_Socket, node, nodes, self_node]).start()
 
-
-    while(True):
-        if node.state == LEADER:
-            if (node.startTime + node.electionTimeout) < time.perf_counter():
-                node.electionTimeout = node.getHeartbeatTimeout()
-                node.startTime = time.perf_counter()
-                for target in targets:
-                    msg_bytes = create_msg(
-                        sender, APPEND_RPC, node.currentTerm)
-                    UDP_Socket.sendto(msg_bytes, (target, 5555))
-
-        if node.state == FOLLOWER:
-            if (node.startTime + node.electionTimeout) < time.perf_counter():
-                node.state = CANDIDATE
-                node.currentTerm += 1
-                node.votedFor = self_node
-                node.voteCount += 1
-
-                for target in targets:
-                    msg_bytes = create_msg(
-                        sender, VOTE_REQUEST, node.currentTerm)
-                    UDP_Socket.sendto(msg_bytes, (target, 5555))
+    threading.Thread(target=messenger, args=[
+        UDP_Socket, node, sender, targets]).start()

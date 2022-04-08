@@ -11,6 +11,9 @@ class RaftNode:
         self.electionTimeout = self.getElectionTimeout()
         self.voteCount = voteCount
         self.startTime = time.perf_counter()
+        self.currentLeader= ""
+        self.shutdown = False
+
 
     def getElectionTimeout(self):
         return random.randint(100, 5000)/1000.0
