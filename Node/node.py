@@ -33,15 +33,15 @@ def vote_request(skt, node: RaftNode, self_node, target, term):
 def vote_ack(node: RaftNode, nodes, self_node):
     node.voteCount += 1
     if node.voteCount >= math.ceil((len(nodes)+1)/2.0):
-        node.electionTimeout = node.getHeartbeatTimeout()
+        node.heartbeatTimeout = node.getHeartbeatTimeout()
         node.startTime = time.perf_counter()
         node.state = LEADER
         node.currentLeader = self_node
 
 
 def append_rpc(node: RaftNode, term, leader):
-    node.electionTimeout = node.getElectionTimeout()
     node.startTime = time.perf_counter()
+    node.electionTimeout = node.getElectionTimeout()
     node.currentLeader = leader
     if node.state == CANDIDATE and term >= node.currentTerm:
         node.currentTerm = term
@@ -53,9 +53,9 @@ def convert_follower(node: RaftNode):
     node.state = FOLLOWER
     node.votedFor = None
     node.voteCount = 0
+    node.shutdown = False
     node.startTime = time.perf_counter()
     node.electionTimeout = node.getElectionTimeout()
-    print("Leader Converted to Follower........................")
 
 
 def timeout(node: RaftNode):
@@ -65,7 +65,6 @@ def timeout(node: RaftNode):
 
 
 def leader_info(skt, node: RaftNode, self_node):
-    print("from node->", node.currentLeader)
     msg_bytes = create_msg(
         self_node, LEADER_INFO, node.currentTerm, "LEADER", node.currentLeader)
     skt.sendto(msg_bytes, ('Controller', 5555))
@@ -108,8 +107,8 @@ def messenger(skt, node: RaftNode, sender, target):
 
         if not node.shutdown:
             if node.state == LEADER:
-                if (node.startTime + node.electionTimeout) < time.perf_counter():
-                    node.electionTimeout = node.getHeartbeatTimeout()
+                if (node.startTime + node.heartbeatTimeout) < time.perf_counter():
+                    node.heartbeatTimeout = node.getHeartbeatTimeout()
                     node.startTime = time.perf_counter()
                     for target in targets:
                         msg_bytes = create_msg(
@@ -118,7 +117,6 @@ def messenger(skt, node: RaftNode, sender, target):
 
             if node.state == FOLLOWER:
                 if (node.startTime + node.electionTimeout) < time.perf_counter():
-                    print("Starting Election")
                     node.state = CANDIDATE
                     node.currentTerm += 1
                     node.votedFor = self_node
@@ -128,7 +126,6 @@ def messenger(skt, node: RaftNode, sender, target):
                         msg_bytes = create_msg(
                             sender, VOTE_REQUEST, node.currentTerm)
                         skt.sendto(msg_bytes, (target, 5555))
-                node.votedFor = None
 
 
 if __name__ == "__main__":

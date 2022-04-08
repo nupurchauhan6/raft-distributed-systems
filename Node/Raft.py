@@ -13,6 +13,7 @@ class RaftNode:
         self.startTime = time.perf_counter()
         self.currentLeader= ""
         self.shutdown = False
+        self.heartbeatTimeout = self.getHeartbeatTimeout()
 
 
     def getElectionTimeout(self):
