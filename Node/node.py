@@ -6,6 +6,8 @@ import threading
 import math
 from raft import RaftNode
 from constants import *
+from termcolor import colored
+
 
 
 def create_msg(sender, request, currentTerm, key="", value=""):
@@ -47,6 +49,7 @@ def append_rpc(node: RaftNode, term, leader):
     node.startTime = time.perf_counter()
     node.electionTimeout = node.getElectionTimeout()
     node.currentLeader = leader
+    node.currentTerm = term
     if node.state == CANDIDATE and term >= node.currentTerm:
         node.currentTerm = term
         node.state = FOLLOWER
@@ -93,12 +96,15 @@ def listener(skt, node: RaftNode, nodes, self_node):
                            decoded_msg['sender_name'])
 
             elif decoded_msg['request'] == CONVERT_FOLLOWER:
+                print(colored('          ************************   Converting ' + self_node + ' To Follower   ************************', 'yellow', attrs=['bold']))
                 convert_follower(node)
 
             elif decoded_msg['request'] == TIMEOUT:
+                print(colored('          ************************   Timing Out ' + self_node + '   ************************', 'red', attrs=['bold']))
                 timeout(node)
 
             elif decoded_msg['request'] == SHUTDOWN:
+                print(colored('          ************************   Shutting down ' + self_node + '   ************************', 'red', attrs=['bold']))
                 node.shutdown = True
 
             elif decoded_msg['request'] == LEADER_INFO:
@@ -119,6 +125,7 @@ def messenger(skt, node: RaftNode, sender, target):
 
             if node.state == FOLLOWER:
                 if (node.startTime + node.electionTimeout) < time.perf_counter():
+                    print(colored('          ************************   Starting Elections  ************************', 'green', attrs=['bold']))
                     node.state = CANDIDATE
                     node.currentTerm += 1
                     node.votedFor = self_node

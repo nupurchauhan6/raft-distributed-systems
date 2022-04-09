@@ -69,25 +69,36 @@ def timeout_leader(skt, nodes):
 
 
 def convert_shutdown_node_to_follower(skt, nodes):
-    shutdown_node = random.choice(nodes)
-    request(skt, 'SHUTDOWN', [shutdown_node])
+    shutdown_node(skt, nodes)
     time.sleep(5)
     request(skt, 'CONVERT_FOLLOWER', [shutdown_node])
+
 
 def convert_shutdown_leader_node_to_follower(skt, nodes):
     shutdown_leader(skt, nodes)
     time.sleep(5)
     request(skt, 'CONVERT_FOLLOWER', [leader])
 
-def request(skt, name, nodes):
-    msg = json.load(open("Message.json"))
-    msg['sender_name'] = 'Controller'
-    msg['request'] = name
-    print(f"Request Created : {msg}")
+
+def create_msg(sender, request_type):
+    msg = {
+        "sender_name": sender,
+        "request": request_type,
+        "term": None,
+        "key": "",
+        "value": ""
+    }
+    msg_bytes = json.dumps(msg).encode()
+    return msg_bytes
+
+
+def request(skt, request_type, nodes):
+    msg_bytes = create_msg('CONTROLLER', request_type)
+    print(f"Request Created : {msg_bytes}")
 
     try:
         for target in nodes:
-            skt.sendto(json.dumps(msg).encode('utf-8'), (target, port))
+            skt.sendto(msg_bytes, (target, port))
     except:
         print(f"ERROR WHILE SENDING REQUEST ACROSS : {traceback.format_exc()}")
 
@@ -95,7 +106,7 @@ def request(skt, name, nodes):
 if __name__ == "__main__":
     time.sleep(5)
     sender = "Controller"
-    nodes = ["Node1", "Node2", "Node3","Node4", "Node5" ]
+    nodes = ["Node1", "Node2", "Node3", "Node4", "Node5"]
 
     skt = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     skt.bind((sender, port))
