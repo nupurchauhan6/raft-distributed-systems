@@ -9,6 +9,36 @@ from constants import *
 from termcolor import colored
 
 
+def create_msg_request_vote(sender, request, currentTerm, key="", value="", lastLogIndex=0, lastLogTerm=0):
+    msg = {
+        "sender_name": sender,
+        "request": request,
+        "term": currentTerm,
+        "key": key,
+        "value": value,
+        "candidateId": sender,
+        "lastLogIndex": lastLogIndex,
+        "lastLogTerm": lastLogTerm
+    }
+    msg_bytes = json.dumps(msg).encode()
+    return msg_bytes
+
+
+def create_msg_append_entry(sender, request, currentTerm, key="", value="", entries=[], prevLogIndex=0, prevLogTerm=0):
+    msg = {
+        "sender_name": sender,
+        "request": request,
+        "term": currentTerm,
+        "key": key,
+        "value": value,
+        "leaderId": sender,
+        "entries": entries,
+        "prevLogIndex": prevLogIndex,
+        "prevLogTerm": prevLogTerm
+    }
+    msg_bytes = json.dumps(msg).encode()
+    return msg_bytes
+
 
 def create_msg(sender, request, currentTerm, key="", value=""):
     msg = {
@@ -96,15 +126,18 @@ def listener(skt, node: RaftNode, nodes, self_node):
                            decoded_msg['sender_name'])
 
             elif decoded_msg['request'] == CONVERT_FOLLOWER:
-                print(colored('          ************************   Converting ' + self_node + ' To Follower   ************************', 'yellow', attrs=['bold']))
+                print(colored('          ************************   Converting ' + self_node +
+                      ' To Follower   ************************', 'yellow', attrs=['bold']))
                 convert_follower(node)
 
             elif decoded_msg['request'] == TIMEOUT:
-                print(colored('          ************************   Timing Out ' + self_node + '   ************************', 'red', attrs=['bold']))
+                print(colored('          ************************   Timing Out ' +
+                      self_node + '   ************************', 'red', attrs=['bold']))
                 timeout(node)
 
             elif decoded_msg['request'] == SHUTDOWN:
-                print(colored('          ************************   Shutting down ' + self_node + '   ************************', 'red', attrs=['bold']))
+                print(colored('          ************************   Shutting down ' +
+                      self_node + '   ************************', 'red', attrs=['bold']))
                 node.shutdown = True
 
             elif decoded_msg['request'] == LEADER_INFO:
@@ -119,20 +152,21 @@ def messenger(skt, node: RaftNode, sender, target):
                     node.heartbeatTimeout = node.getHeartbeatTimeout()
                     node.startTime = time.perf_counter()
                     for target in targets:
-                        msg_bytes = create_msg(
+                        msg_bytes = create_msg_append_entry(
                             sender, APPEND_RPC, node.currentTerm)
                         skt.sendto(msg_bytes, (target, 5555))
 
             if node.state == FOLLOWER:
                 if (node.startTime + node.electionTimeout) < time.perf_counter():
-                    print(colored('          ************************   Starting Elections  ************************', 'green', attrs=['bold']))
+                    print(colored(
+                        '          ************************   Starting Elections  ************************', 'green', attrs=['bold']))
                     node.state = CANDIDATE
                     node.currentTerm += 1
                     node.votedFor = self_node
                     node.voteCount = 1
 
                     for target in targets:
-                        msg_bytes = create_msg(
+                        msg_bytes = create_msg_request_vote(
                             sender, VOTE_REQUEST, node.currentTerm)
                         skt.sendto(msg_bytes, (target, 5555))
 
@@ -141,7 +175,7 @@ if __name__ == "__main__":
 
     self_node = os.getenv('NODE_NAME')
     sender = self_node
-    nodes = ["Node1", "Node2", "Node3","Node4", "Node5" ]
+    nodes = ["Node1", "Node2", "Node3", "Node4", "Node5"]
     targets = nodes
     targets.remove(self_node)
     node = RaftNode()
