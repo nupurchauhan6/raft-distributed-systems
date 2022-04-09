@@ -8,7 +8,7 @@ from raft import RaftNode
 from constants import *
 from termcolor import colored
 
-
+# Create messenge request for request vote RPC
 def create_msg_request_vote(sender, request, currentTerm, key="", value="", lastLogIndex=0, lastLogTerm=0):
     msg = {
         "sender_name": sender,
@@ -23,7 +23,7 @@ def create_msg_request_vote(sender, request, currentTerm, key="", value="", last
     msg_bytes = json.dumps(msg).encode()
     return msg_bytes
 
-
+# Create messenge request fot append entry RPC
 def create_msg_append_entry(sender, request, currentTerm, key="", value="", entries=[], prevLogIndex=0, prevLogTerm=0):
     msg = {
         "sender_name": sender,
@@ -39,7 +39,7 @@ def create_msg_append_entry(sender, request, currentTerm, key="", value="", entr
     msg_bytes = json.dumps(msg).encode()
     return msg_bytes
 
-
+# Create message request
 def create_msg(sender, request, currentTerm, key="", value=""):
     msg = {
         "sender_name": sender,
@@ -51,8 +51,8 @@ def create_msg(sender, request, currentTerm, key="", value=""):
     msg_bytes = json.dumps(msg).encode()
     return msg_bytes
 
-
-def vote_request(skt, node: RaftNode, self_node, target, term):
+# Receive vote requests from all nodes and cast a vote
+def vote_request(skt, node: RaftNode, self_node, target, term): 
     if node.currentTerm < term:
         node.currentTerm = term
         node.state = FOLLOWER
@@ -65,7 +65,7 @@ def vote_request(skt, node: RaftNode, self_node, target, term):
         msg_bytes = create_msg(self_node, VOTE_ACK, node.currentTerm)
         skt.sendto(msg_bytes, (target, 5555))
 
-
+# Check for majority of votes and convert itself to a Leader
 def vote_ack(node: RaftNode, nodes, self_node):
     node.voteCount += 1
     if node.voteCount >= math.ceil((len(nodes)+1)/2.0):
@@ -74,7 +74,7 @@ def vote_ack(node: RaftNode, nodes, self_node):
         node.state = LEADER
         node.currentLeader = self_node
 
-
+# Receive heartbeats from leader node and reset election timeout
 def append_rpc(node: RaftNode, term, leader):
     node.startTime = time.perf_counter()
     node.electionTimeout = node.getElectionTimeout()
@@ -84,7 +84,7 @@ def append_rpc(node: RaftNode, term, leader):
         node.currentTerm = term
         node.state = FOLLOWER
 
-
+# Convert a node to follower state
 def convert_follower(node: RaftNode):
     node.state = FOLLOWER
     node.votedFor = None
@@ -93,19 +93,20 @@ def convert_follower(node: RaftNode):
     node.startTime = time.perf_counter()
     node.electionTimeout = node.getElectionTimeout()
 
-
+# Timeout a node immediately
 def timeout(node: RaftNode):
     node.state = 'FOLLOWER'
     node.startTime = time.perf_counter()
     node.electionTimeout = 0
 
-
+# Send leader information to the controller
 def leader_info(skt, node: RaftNode, self_node):
     msg_bytes = create_msg(
         self_node, LEADER_INFO, node.currentTerm, "LEADER", node.currentLeader)
     skt.sendto(msg_bytes, ('Controller', 5555))
 
 
+# Listen for incoming requests
 def listener(skt, node: RaftNode, nodes, self_node):
     while True:
         msg, addr = skt.recvfrom(1024)
@@ -143,7 +144,7 @@ def listener(skt, node: RaftNode, nodes, self_node):
             elif decoded_msg['request'] == LEADER_INFO:
                 leader_info(skt, node, self_node)
 
-
+# Sends RPCs
 def messenger(skt, node: RaftNode, sender, target):
     while(True):
         if not node.shutdown:
