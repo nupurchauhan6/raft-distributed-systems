@@ -136,7 +136,7 @@ def listener(skt, node: RaftNode, nodes, self_node):
                 timeout(node)
 
             elif decoded_msg['request'] == SHUTDOWN:
-                print(colored('          ************************   Shutting down ' +
+                print(colored('          ************************   Shutting Down ' +
                       self_node + '   ************************', 'red', attrs=['bold']))
                 node.shutdown = True
 

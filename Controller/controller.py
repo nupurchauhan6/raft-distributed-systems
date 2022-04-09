@@ -69,15 +69,10 @@ def timeout_leader(skt, nodes):
 
 
 def convert_shutdown_node_to_follower(skt, nodes):
-    shutdown_node(skt, nodes)
-    time.sleep(5)
+    shutdown_node = random.choice(nodes)
+    request(skt, 'SHUTDOWN', [shutdown_node])
+    time.sleep(2)
     request(skt, 'CONVERT_FOLLOWER', [shutdown_node])
-
-
-def convert_shutdown_leader_node_to_follower(skt, nodes):
-    shutdown_leader(skt, nodes)
-    time.sleep(5)
-    request(skt, 'CONVERT_FOLLOWER', [leader])
 
 
 def create_msg(sender, request_type):
