@@ -107,13 +107,19 @@ def append_rpc(node: RaftNode, term, leader, prevLogIndex, prevLogTerm, entries,
     node.electionTimeout = node.getElectionTimeout()
     node.currentLeader = leader
     
+    if len(entries) == 0:
+        return True
+
     if prevLogIndex < len(node.log):
-        entry = node.log[prevLogIndex]
-        logTerm = entry["term"]
+        if len(node.log) == 0:
+            logTerm = 0
+        else:
+            entry = node.log[prevLogIndex]
+            logTerm = entry["term"]
 
         if logTerm == prevLogTerm:
             node.log = node.log[:(prevLogIndex+1)] + entries
-            print("Followes Log Status.....", node.log)
+            print("Follower's Log Status.....", node.log)
 
             if node.commitIndex < leaderCommit:
                 node.commitIndex = leaderCommit
@@ -239,13 +245,17 @@ def messenger(skt, node: RaftNode, sender, targets):
                 if (node.startTime + node.heartbeatTimeout) < time.perf_counter():
                     node.heartbeatTimeout = node.getHeartbeatTimeout()
                     node.startTime = time.perf_counter()
-                    print("nextIndex.....", node.nextIndex)
+
                     for target in targets:
                         i = targets.index(target)
                         prevLogIndex = node.nextIndex[i]-1
-                        prevLogTerm = node.log[prevLogIndex]["term"]
+                        if prevLogIndex == -1:
+                            prevLogTerm = 0
+                        else:
+                            prevLogTerm = node.log[prevLogIndex]["term"]
                         entries = node.log[node.nextIndex[i]:]
-         
+                        
+                        print("#############", prevLogIndex, prevLogTerm, entries)
                         msg_bytes = create_msg_append_entry(
                                 sender, APPEND_RPC, node.currentTerm, entries=entries, prevLogTerm=prevLogTerm, prevLogIndex=prevLogIndex)
                         skt.sendto(msg_bytes, (target, 5555))

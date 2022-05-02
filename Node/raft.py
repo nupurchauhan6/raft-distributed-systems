@@ -1,20 +1,13 @@
 import time
 import random
 
-initial_entry = {
-    'term': -1,
-    'key': "intial_entry",
-    'value': "initial_entry"
-}
-
-
 class RaftNode:
-    def __init__(self, state="FOLLOWER", currentTerm=0, votedFor=None, log=[initial_entry], voteCount=0):
+    def __init__(self, state="FOLLOWER", currentTerm=0, votedFor=None, log=[], voteCount=0):
         self.state = state
         self.currentTerm = currentTerm
         self.votedFor = votedFor
         self.log = log
-        self.numLog = 1
+        self.numLog = 0
         self.electionTimeout = self.getElectionTimeout()
         self.voteCount = voteCount
         self.startTime = time.perf_counter()
