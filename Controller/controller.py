@@ -77,15 +77,24 @@ def timeout_leader(skt, nodes):
     timeout_node = leader
     request(skt, 'TIMEOUT', [timeout_node])
 
+# Store new key, value
+def store(skt, nodes, store_key, store_value):
+    request(skt, "STORE", nodes, key=store_key, value=store_value)
+
+
+# retrieve Commited logs
+def retrieve(skt, nodes):
+    request(skt, "RETRIEVE", nodes, key="", value="")
+
 
 # Create a message request
-def create_msg(sender, request_type):
+def create_msg(sender, request_type, key="", value=""):
     msg = {
         "sender_name": sender,
         "request": request_type,
         "term": None,
-        "key": "",
-        "value": ""
+        "key": key,
+        "value": value
     }
     msg_bytes = json.dumps(msg).encode()
     return msg_bytes
@@ -105,8 +114,8 @@ def listener(skt):
 # Send controller requests
 
 
-def request(skt, request_type, nodes):
-    msg_bytes = create_msg('CONTROLLER', request_type)
+def request(skt, request_type, nodes, key="", value=""):
+    msg_bytes = create_msg('CONTROLLER', request_type, key, value)
     print(f"Request Created : {msg_bytes}")
 
     try:
@@ -119,7 +128,7 @@ def request(skt, request_type, nodes):
 if __name__ == "__main__":
     time.sleep(5)
     sender = "Controller"
-    nodes = ["Node1", "Node2", "Node3", "Node4", "Node5"]
+    nodes = ["Node1", "Node2", "Node3"]
 
     skt = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
     skt.bind((sender, port))
@@ -128,21 +137,26 @@ if __name__ == "__main__":
     run_test_case = True
 
     testCases = {
-        1: leader_info,
-        2: convert_all_to_follower,
-        3: convert_leader_to_follower,
-        4: shutdown_node,
-        5: shutdown_leader,
-        6: convert_shutdown_node_to_follower,
-        7: timeout_node,
-        8: timeout_leader,
+        1:  leader_info,
+        2:  convert_all_to_follower,
+        3:  convert_leader_to_follower,
+        4:  shutdown_node,
+        5:  shutdown_leader,
+        6:  convert_shutdown_node_to_follower,
+        7:  timeout_node,
+        8:  timeout_leader,
+        9:  store,
+        10: retrieve,
     }
 
     # Run combination of different cases
-    while run_test_case:
-        select_test_case = random.randint(1, 8)
-        testCases[select_test_case](skt, nodes)
-        time.sleep(5)
+    # while run_test_case:
+    #     select_test_case = random.randint(1, 8)
+    #     testCases[select_test_case](skt, nodes)
+    #     time.sleep(5)
 
     # Run any single case
-    # testCases[3](skt, nodes)
+    time.sleep(2)
+    testCases[9](skt, nodes, "k1", "Value1")
+    time.sleep(3)
+    testCases[9](skt, nodes, "k2", "Value2")
