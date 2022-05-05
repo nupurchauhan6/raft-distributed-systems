@@ -7,7 +7,6 @@ class RaftNode:
         self.currentTerm = currentTerm
         self.votedFor = votedFor
         self.log = log
-        self.numLog = 0
         self.electionTimeout = self.getElectionTimeout()
         self.voteCount = voteCount
         self.startTime = time.perf_counter()
@@ -27,10 +26,10 @@ class RaftNode:
         return 0.5
 
     def getLogIndex(self):
-        return self.numLog - 1
+        return len(self.log) - 1
 
     def getLogTerm(self):
-        if self.numLog == 0:
+        if len(self.log) == 0:
             return 0
-        entry = self.log[self.numLog-1]
+        entry = self.log[len(self.log)-1]
         return entry["term"]

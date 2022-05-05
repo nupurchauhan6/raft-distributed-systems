@@ -21,8 +21,6 @@ def convert_all_to_follower(skt, nodes):
     request(skt, 'CONVERT_FOLLOWER', nodes)
 
 # Convert a leader node to the follower state
-
-
 def convert_leader_to_follower(skt, nodes):
     leader_info(skt, nodes)
     global is_leader_set
@@ -32,8 +30,6 @@ def convert_leader_to_follower(skt, nodes):
     request(skt, 'CONVERT_FOLLOWER', [leader])
 
 # Shutdown any particular node
-
-
 def shutdown_node(skt, nodes):
     shutdown_node = random.choice(nodes)
     request(skt, 'SHUTDOWN', [shutdown_node])
@@ -50,8 +46,6 @@ def shutdown_leader(skt, nodes):
     request(skt, 'SHUTDOWN', [shutdown_node])
 
 # Convert a node which has been shutdown
-
-
 def convert_shutdown_node_to_follower(skt, nodes):
     shutdown_node = random.choice(nodes)
     request(skt, 'SHUTDOWN', [shutdown_node])
@@ -59,15 +53,11 @@ def convert_shutdown_node_to_follower(skt, nodes):
     request(skt, 'CONVERT_FOLLOWER', [shutdown_node])
 
 # Timeout any particular node
-
-
 def timeout_node(skt, nodes):
     timeout_node = random.choice(nodes)
     request(skt, 'TIMEOUT', [timeout_node])
 
 # Timeout leader node
-
-
 def timeout_leader(skt, nodes):
     leader_info(skt, nodes)
     global is_leader_set
@@ -77,6 +67,41 @@ def timeout_leader(skt, nodes):
     timeout_node = leader
     request(skt, 'TIMEOUT', [timeout_node])
 
+
+def test_log_replication(skt, nodes):
+    shutdown_node = random.choice(nodes)
+    testCases[9](skt, nodes, "k1", "Value1")
+    time.sleep(3)
+    testCases[12](skt, nodes)
+    request(skt, 'SHUTDOWN', [shutdown_node])
+    time.sleep(3)
+    testCases[9](skt, nodes, "k2", "Value2")
+    time.sleep(3)
+    testCases[12](skt, nodes)
+    request(skt, 'CONVERT_FOLLOWER', [shutdown_node])
+    time.sleep(5)
+    testCases[9](skt, nodes, "k3", "Value3")
+    time.sleep(5)
+    testCases[12](skt, nodes)
+
+def get_follower_log(skt, nodes):
+    leader_info(skt, nodes)
+    global is_leader_set
+    while(not is_leader_set):
+        continue
+    is_leader_set = False
+    for node in nodes:
+        if node != leader:
+            msg = {
+                "sender_name": sender,
+                "request": 'RETRIEVE_FOLLOWER_LOG',
+            }
+            msg_bytes = json.dumps(msg).encode()
+            skt.sendto(msg_bytes, (node, port))  
+
+
+
+
 # Store new key, value
 def store(skt, nodes, store_key, store_value):
     request(skt, "STORE", nodes, key=store_key, value=store_value)
@@ -85,8 +110,8 @@ def store(skt, nodes, store_key, store_value):
 # retrieve Commited logs
 def retrieve(skt, nodes):
     request(skt, "RETRIEVE", nodes, key="", value="")
-
-
+    
+    
 # Create a message request
 def create_msg(sender, request_type, key="", value=""):
     msg = {
@@ -105,15 +130,18 @@ def listener(skt):
     while True:
         msg, addr = skt.recvfrom(1024)
         decoded_msg = json.loads(msg.decode('utf-8'))
-        global leader
-        leader = decoded_msg['value']
-        global is_leader_set
-        is_leader_set = True
         print(f"Message Received : {decoded_msg} From : {addr}")
 
+        if decoded_msg['request'] == 'LEADER_INFO':
+            global leader
+            leader = decoded_msg['value']
+            global is_leader_set
+            is_leader_set = True
+
+        if decoded_msg['request'] == 'RETRIEVE_FOLLOWER_INDEX':
+            print("Follower's Log Status ", decoded_msg['logs'])
+
 # Send controller requests
-
-
 def request(skt, request_type, nodes, key="", value=""):
     msg_bytes = create_msg('CONTROLLER', request_type, key, value)
     print(f"Request Created : {msg_bytes}")
@@ -147,6 +175,8 @@ if __name__ == "__main__":
         8:  timeout_leader,
         9:  store,
         10: retrieve,
+        11: test_log_replication,
+        12: get_follower_log
     }
 
     # Run combination of different cases
@@ -157,6 +187,9 @@ if __name__ == "__main__":
 
     # Run any single case
     time.sleep(2)
-    testCases[9](skt, nodes, "k1", "Value1")
-    time.sleep(3)
-    testCases[9](skt, nodes, "k2", "Value2")
+    testCases[11](skt, nodes)
+    # testCases[4](skt, nodes)
+    # time.sleep(2)
+    # testCases[9](skt, nodes, "k2", "Value2")
+    # time.sleep(2)
+    # testCases[6](skt, nodes)
