@@ -13,11 +13,10 @@ class RaftNode:
         self.currentLeader = ""
         self.shutdown = False
         self.heartbeatTimeout = self.getHeartbeatTimeout()
-        self.commitIndex = 0
+        self.commitIndex = -1
         self.lastApplied = 0
         self.nextIndex = []
         self.matchIndex = []
-        self.commitCount = 0
         self.committed = False
 
     def getElectionTimeout(self):

@@ -69,14 +69,16 @@ def timeout_leader(skt, nodes):
 
 
 def test_log_replication(skt, nodes):
-    shutdown_node = random.choice(nodes)
+    testCases[1](skt, nodes)
+    time.sleep(5)
     testCases[9](skt, nodes, "k1", "Value1")
     time.sleep(3)
-    request(skt, 'SHUTDOWN', [shutdown_node])
+    temp_leader = leader
+    request(skt, 'SHUTDOWN', [temp_leader])
     time.sleep(3)
     testCases[9](skt, nodes, "k2", "Value2")
     time.sleep(3)
-    request(skt, 'CONVERT_FOLLOWER', [shutdown_node])
+    request(skt, 'CONVERT_FOLLOWER', [temp_leader])
     time.sleep(5)
     testCases[9](skt, nodes, "k3", "Value3")
 

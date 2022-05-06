@@ -40,11 +40,12 @@ def create_msg_append_entry(sender, request, currentTerm, key="", value="", entr
     msg_bytes = json.dumps(msg).encode()
     return msg_bytes
 
-def create_msg_append_reply(sender, request, success=False, committed = False):
+def create_msg_append_reply(sender, request, matchIndex, success=False, committed = False):
     msg = {
         "sender_name": sender,
         "request": request,
         "success": success,
+        "matchIndex": matchIndex,
         "committed": committed
     }
     msg_bytes = json.dumps(msg).encode()
@@ -94,14 +95,14 @@ def vote_ack(node: RaftNode, nodes, self_node):
             node.matchIndex.append(0)
         print("Initialized nextIndex......", node.nextIndex, node.log)
         
-
 # Receive heartbeats from leader node and reset election timeout
 def append_rpc(node: RaftNode, term, leader, prevLogIndex, prevLogTerm, entries, leaderCommit):
     
     committed = False
     success = False
+    matchIndex = 0
     if term < node.currentTerm:
-        return (success, committed)
+        return (success, committed, matchIndex)
     elif node.state == CANDIDATE and term >= node.currentTerm:
         node.currentTerm = term
         node.state = FOLLOWER
@@ -112,10 +113,12 @@ def append_rpc(node: RaftNode, term, leader, prevLogIndex, prevLogTerm, entries,
     node.currentLeader = leader
     
     if len(entries) == 0:
+        if node.commitIndex < leaderCommit:
+            node.commitIndex = min(leaderCommit, prevLogIndex)
         success = True
-        return (success, committed)
+        return (success, committed, matchIndex)
     
-    if prevLogIndex < len(node.log):
+    if prevLogIndex < len(node.log):   
         if len(node.log) == 0:
             logTerm = 0
         else:
@@ -126,27 +129,26 @@ def append_rpc(node: RaftNode, term, leader, prevLogIndex, prevLogTerm, entries,
             node.log = node.log[:(prevLogIndex+1)] + entries
             success = True
             committed = True
+            matchIndex = prevLogIndex + 1
             print("Follower's Log Status.....", node.log)
-
-            if node.commitIndex < leaderCommit:
-                node.commitIndex = leaderCommit
-            
-            return (success, committed)
-
-    return (success, committed)
+            return (success, committed, matchIndex)
 
 
-def append_reply(node: RaftNode, nodes, self_node, sender, success, committed):
-    
+    return (success, committed, matchIndex)
+
+
+def append_reply(node: RaftNode, nodes, self_node, sender, success, committed, matchIndex):
     sender_index = nodes.index(sender)
     self_index = nodes.index(self_node)
     if success == True:
         node.nextIndex[self_index] = node.getLogIndex()+1
         node.nextIndex[sender_index] = node.getLogIndex()+1
         if committed:
-            node.commitCount += 1
-            if node.commitCount >= math.ceil((len(nodes)+1)/2.0):
-                node.commitIndex += 1
+            node.matchIndex[sender_index] = matchIndex
+            N  = max(set(node.matchIndex), key = node.matchIndex.count)
+            if N > node.commitIndex:
+                node.commitIndex = N
+
     elif success == False:
         node.nextIndex[self_index] -= 1
         node.nextIndex[sender_index] -= 1
@@ -171,7 +173,7 @@ def timeout(node: RaftNode):
 # Send leader information to the controller
 def leader_info(skt, node: RaftNode, self_node):
     msg_bytes = create_msg(
-        self_node, LEADER_INFO, node.currentTerm, "LEADER", node.currentLeader)
+        self_node, LEADER_INFO, node.currentTerm, LEADER, node.currentLeader)
     skt.sendto(msg_bytes, ('Controller', 5555))
 
 def is_leader(node: RaftNode):
@@ -202,10 +204,10 @@ def listener(skt, node: RaftNode, nodes, self_node):
                 vote_ack(node, nodes, self_node)
 
             elif decoded_msg['request'] == APPEND_RPC:
-                success, committed = append_rpc(node, decoded_msg['term'], decoded_msg['sender_name'], decoded_msg['prevLogIndex'],
+                success, committed, matchIndex = append_rpc(node, decoded_msg['term'], decoded_msg['sender_name'], decoded_msg['prevLogIndex'],
                                   decoded_msg['prevLogTerm'], decoded_msg['entries'], decoded_msg['commitIndex'])
                 
-                msg_bytes = create_msg_append_reply(self_node, APPEND_REPLY, success=success, committed = committed)
+                msg_bytes = create_msg_append_reply(self_node, APPEND_REPLY, success=success, committed = committed, matchIndex = matchIndex)
                 skt.sendto(msg_bytes, (decoded_msg['sender_name'], 5555))
 
             elif decoded_msg['request'] == CONVERT_FOLLOWER:
@@ -228,7 +230,6 @@ def listener(skt, node: RaftNode, nodes, self_node):
                 
             elif decoded_msg['request'] == STORE:
                 if is_leader(node):
-                    node.commitCount = 0
                     new_entry = {
                         'term': node.currentTerm,
                         'key': decoded_msg['key'],
@@ -248,13 +249,14 @@ def listener(skt, node: RaftNode, nodes, self_node):
 
             elif decoded_msg['request'] == APPEND_REPLY:
                 append_reply(
-                    node, nodes, self_node, decoded_msg['sender_name'], decoded_msg['success'], decoded_msg['committed'])
+                    node, nodes, self_node, decoded_msg['sender_name'], decoded_msg['success'], decoded_msg['committed'], decoded_msg['matchIndex'])
                 
             elif decoded_msg['request'] == RETRIEVE_FOLLOWER_LOG:
                 msg = {
                     "sender_name": sender,
                     "request": RETRIEVE_FOLLOWER_LOG,
-                    "logs": node.log
+                    "logs": node.log,
+                    "commitIndex": node.commitIndex
                 }
                 msg_bytes = json.dumps(msg).encode()
                 skt.sendto(msg_bytes, (decoded_msg['sender_name'], 5555))
@@ -275,7 +277,10 @@ def messenger(skt, node: RaftNode, sender, targets):
                             prevLogTerm = 0
                         else:
                             prevLogTerm = node.log[prevLogIndex]["term"]
-                        entries = node.log[node.nextIndex[i]:]
+                        if len(node.log) == 0:
+                            entries = []
+                        else:
+                            entries = node.log[node.nextIndex[i]:node.nextIndex[i] + 1]
                         
                         print("#############", target, prevLogIndex, prevLogTerm, entries)
                         msg_bytes = create_msg_append_entry(
