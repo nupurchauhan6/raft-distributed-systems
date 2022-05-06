@@ -72,17 +72,13 @@ def test_log_replication(skt, nodes):
     shutdown_node = random.choice(nodes)
     testCases[9](skt, nodes, "k1", "Value1")
     time.sleep(3)
-    testCases[12](skt, nodes)
     request(skt, 'SHUTDOWN', [shutdown_node])
     time.sleep(3)
     testCases[9](skt, nodes, "k2", "Value2")
     time.sleep(3)
-    testCases[12](skt, nodes)
     request(skt, 'CONVERT_FOLLOWER', [shutdown_node])
     time.sleep(5)
     testCases[9](skt, nodes, "k3", "Value3")
-    time.sleep(5)
-    testCases[12](skt, nodes)
 
 def get_follower_log(skt, nodes):
     leader_info(skt, nodes)
@@ -188,6 +184,8 @@ if __name__ == "__main__":
     # Run any single case
     time.sleep(2)
     testCases[11](skt, nodes)
+    time.sleep(5)
+    testCases[12](skt, nodes)
     # testCases[4](skt, nodes)
     # time.sleep(2)
     # testCases[9](skt, nodes, "k2", "Value2")

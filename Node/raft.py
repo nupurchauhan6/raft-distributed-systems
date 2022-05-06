@@ -18,6 +18,7 @@ class RaftNode:
         self.nextIndex = []
         self.matchIndex = []
         self.commitCount = 0
+        self.committed = False
 
     def getElectionTimeout(self):
         return random.randint(500, 5000)/1000.0
