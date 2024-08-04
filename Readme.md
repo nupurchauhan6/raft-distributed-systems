@@ -1,6 +1,13 @@
-#Phase 3 : Raft Leader Elections
-The following readme file has been provided to explain the project
-structure and how to structure/organize your code.
+## Phase 3 : Raft Leader Elections
+At any given moment, the server is either in the state of leader, follower or candidate. Ideally, there is exactly one leader and all other servers are followers. Followers are passive; they do not make their own requests but rather respond to those made by leaders and candidates. Additionally, the server(node) contains arguments like
+
+**currentTerm:** Current term of the election.
+
+**log [ ] :** Log entries.
+
+**electionTimeout:** The period after which a follower, having not received any heartbeats from the leader, becomes a candidate and starts elections.
+
+**heartbeatTimeout:** The Interval after which the leader will send an APPEND_RPC request to the follower.
 
 You must use only a single image for your RAFT implementation and scale it up to atleast a 5 node cluster.
 ## I. Project Structure
